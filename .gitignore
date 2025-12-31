@@ -1,0 +1,7 @@
+# Binaries
+taquin
+test
+*.o
+
+# System
+.DS_Store

@@ -1,4 +1,4 @@
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -107,8 +107,8 @@ bool check_win(GameState *game) {
     return true;
 }
 
-// Function to draw a number at a position using segments
-void draw_number(SDL_Renderer *renderer, int number, int x, int y, int size) {
+// Function to draw a number at a position using segments (adapted for SDL3 FRect)
+void draw_number(SDL_Renderer *renderer, int number, float x, float y, float size) {
     int digits[2];
     int num_digits = 0;
     
@@ -121,34 +121,34 @@ void draw_number(SDL_Renderer *renderer, int number, int x, int y, int size) {
         num_digits = 1;
     }
 
-    int digit_width = size / 2;
-    int digit_height = size;
-    int stroke = size / 8;
-    if (stroke < 2) stroke = 2; // Min stroke width
+    float digit_width = size / 2.0f;
+    float digit_height = size;
+    float stroke = size / 8.0f;
+    if (stroke < 2.0f) stroke = 2.0f;
     
-    int start_x = x - (num_digits * digit_width + (num_digits - 1) * (stroke * 2)) / 2;
-    int start_y = y - digit_height / 2;
+    float start_x = x - (num_digits * digit_width + (num_digits - 1) * (stroke * 2.0f)) / 2.0f;
+    float start_y = y - digit_height / 2.0f;
 
     for (int i = 0; i < num_digits; i++) {
         int d = digits[i];
-        int dx = start_x + i * (digit_width + stroke * 3);
-        int dy = start_y;
+        float dx = start_x + i * (digit_width + stroke * 3.0f);
+        float dy = start_y;
         
-        SDL_Rect segs[7];
+        SDL_FRect segs[7];
         // Top
-        segs[0] = (SDL_Rect){dx, dy, digit_width, stroke}; 
+        segs[0] = (SDL_FRect){dx, dy, digit_width, stroke}; 
         // TR
-        segs[1] = (SDL_Rect){dx + digit_width - stroke, dy, stroke, digit_height / 2}; 
+        segs[1] = (SDL_FRect){dx + digit_width - stroke, dy, stroke, digit_height / 2.0f}; 
         // BR
-        segs[2] = (SDL_Rect){dx + digit_width - stroke, dy + digit_height / 2, stroke, digit_height / 2}; 
+        segs[2] = (SDL_FRect){dx + digit_width - stroke, dy + digit_height / 2.0f, stroke, digit_height / 2.0f}; 
         // Bottom
-        segs[3] = (SDL_Rect){dx, dy + digit_height - stroke, digit_width, stroke}; 
+        segs[3] = (SDL_FRect){dx, dy + digit_height - stroke, digit_width, stroke}; 
         // BL
-        segs[4] = (SDL_Rect){dx, dy + digit_height / 2, stroke, digit_height / 2}; 
+        segs[4] = (SDL_FRect){dx, dy + digit_height / 2.0f, stroke, digit_height / 2.0f}; 
         // TL
-        segs[5] = (SDL_Rect){dx, dy, stroke, digit_height / 2}; 
+        segs[5] = (SDL_FRect){dx, dy, stroke, digit_height / 2.0f}; 
         // Center
-        segs[6] = (SDL_Rect){dx, dy + digit_height / 2 - stroke / 2, digit_width, stroke};
+        segs[6] = (SDL_FRect){dx, dy + digit_height / 2.0f - stroke / 2.0f, digit_width, stroke};
         
         for (int s = 0; s < 7; s++) {
             if (DIGIT_SEGMENTS[d][s]) {
@@ -159,28 +159,27 @@ void draw_number(SDL_Renderer *renderer, int number, int x, int y, int size) {
 }
 
 // Draw a simple Home icon
-void draw_home_icon(SDL_Renderer *renderer, int x, int y, int w, int h) {
+void draw_home_icon(SDL_Renderer *renderer, float x, float y, float w, float h) {
     // House body (square)
-    SDL_Rect body = {x + w/4, y + h/2, w/2, h/3};
+    SDL_FRect body = {x + w/4.0f, y + h/2.0f, w/2.0f, h/3.0f};
     SDL_RenderFillRect(renderer, &body);
     
     // Roof (triangle approximated with lines)
-    int cx = x + w/2;
-    int top_y = y + h/6;
+    float cx = x + w/2.0f;
+    float top_y = y + h/6.0f;
     
-    // Simple filled triangle loop
     for(int i=0; i<w/2; i++) {
-        if ((top_y + i) >= (y + h/2)) break;
-        SDL_RenderDrawLine(renderer, cx - i, top_y + i, cx + i, top_y + i);
-        // Draw one more line to fill gaps if any (crude fill)
-        SDL_RenderDrawLine(renderer, cx - i, top_y + i + 1, cx + i, top_y + i + 1);
+        if ((top_y + i) >= (y + h/2.0f)) break;
+        SDL_RenderLine(renderer, cx - i, top_y + i, cx + i, top_y + i);
+        // Fill gaps
+        SDL_RenderLine(renderer, cx - i, top_y + i + 1, cx + i, top_y + i + 1);
     }
 }
 
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
         return 1;
     }
@@ -189,13 +188,15 @@ int main(int argc, char *argv[]) {
     int w_width = 4 * TILE_SIZE;
     int w_height = 4 * TILE_SIZE + UI_HEIGHT;
     
-    SDL_Window *window = SDL_CreateWindow("Taquin (15-Puzzle)", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w_width, w_height, SDL_WINDOW_SHOWN);
+    // SDL3: No x,y args
+    SDL_Window *window = SDL_CreateWindow("Taquin (15-Puzzle) [SDL3]", w_width, w_height, 0); 
     if (window == NULL) {
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
         return 1;
     }
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    // SDL3: CreateRenderer takes window and name (or NULL)
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
     if (renderer == NULL) {
         printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
         return 1;
@@ -210,38 +211,33 @@ int main(int argc, char *argv[]) {
 
     while (running) {
         while (SDL_PollEvent(&e) != 0) {
-            if (e.type == SDL_QUIT) {
+            if (e.type == SDL_EVENT_QUIT) { // SDL3 constant
                 running = false;
             } 
             else if (state == STATE_MENU) {
-                if (e.type == SDL_MOUSEBUTTONDOWN) {
-                    // Simple hit detection for menu buttons (rough layout below)
-                    // 3: Left, 4: Center, 5: Right
-                    int mx = e.button.x;
-                    int my = e.button.y;
+                if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                    float mx = e.button.x;
+                    float my = e.button.y;
                     
-                    // Button Y area (centered vert in window)
                     if (my > w_height/2 - 50 && my < w_height/2 + 50) {
                         int selected_size = 0;
                         if (mx < w_width / 3) selected_size = 3;
                         else if (mx < 2 * w_width / 3) selected_size = 4;
                         else selected_size = 5;
                         
-                        // Apply selection
                         init_game(&game, selected_size);
                         shuffle_game(&game);
                         state = STATE_PLAYING;
                         has_won = false;
                         
-                        // Resize window for the game
                         SDL_SetWindowSize(window, selected_size * TILE_SIZE, selected_size * TILE_SIZE + UI_HEIGHT);
                     }
                 }
-                else if (e.type == SDL_KEYDOWN) {
+                else if (e.type == SDL_EVENT_KEY_DOWN) {
                    int selected_size = 0;
-                   if (e.key.keysym.sym == SDLK_3) selected_size = 3;
-                   else if (e.key.keysym.sym == SDLK_4 ) selected_size = 4;
-                   else if (e.key.keysym.sym == SDLK_5) selected_size = 5;
+                   if (e.key.key == SDLK_3) selected_size = 3; // SDL3: e.key.key for keycode
+                   else if (e.key.key == SDLK_4 ) selected_size = 4;
+                   else if (e.key.key == SDLK_5) selected_size = 5;
                    
                    if (selected_size > 0) {
                         init_game(&game, selected_size);
@@ -253,30 +249,33 @@ int main(int argc, char *argv[]) {
                 }
             }
             else if (state == STATE_PLAYING) {
-                if (e.type == SDL_MOUSEBUTTONDOWN) {
-                    int x = e.button.x / TILE_SIZE;
-                    int y = e.button.y / TILE_SIZE;
+                if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                    float fx = e.button.x;
+                    float fy = e.button.y;
+                    int x = (int)(fx / TILE_SIZE);
+                    int y = (int)(fy / TILE_SIZE);
                     
-                    // Check if clicked in UI area
-                    if (e.button.y >= game.size * TILE_SIZE) {
-                         // Clicked in bottom bar -> Go to Menu
+                    if (fy >= game.size * TILE_SIZE) {
                          state = STATE_MENU;
                          SDL_SetWindowSize(window, 4 * TILE_SIZE, 4 * TILE_SIZE + UI_HEIGHT);
                     } 
                     else if (!has_won) {
-                        // Game click
                         move_tile(&game, x, y);
                         if (check_win(&game)) {
                             has_won = true;
                             printf("You Won!\n");
                         }
                     } else {
-                         // Restart if clicked on board while won
-                         shuffle_game(&game);
-                         has_won = false;
+                         if (e.button.button == SDL_BUTTON_RIGHT) {
+                             state = STATE_MENU;
+                             SDL_SetWindowSize(window, 4 * TILE_SIZE, 4 * TILE_SIZE + UI_HEIGHT);
+                        } else {
+                            shuffle_game(&game);
+                            has_won = false;
+                        }
                     }
-                } else if (e.type == SDL_KEYDOWN) {
-                     if (e.key.keysym.sym == SDLK_ESCAPE) {
+                } else if (e.type == SDL_EVENT_KEY_DOWN) {
+                     if (e.key.key == SDLK_ESCAPE) {
                          state = STATE_MENU;
                          SDL_SetWindowSize(window, 4 * TILE_SIZE, 4 * TILE_SIZE + UI_HEIGHT);
                      }
@@ -284,7 +283,7 @@ int main(int argc, char *argv[]) {
                         int target_x = game.empty_x;
                         int target_y = game.empty_y;
                         
-                        switch(e.key.keysym.sym) {
+                        switch(e.key.key) {
                             case SDLK_UP: target_y++; break;    
                             case SDLK_DOWN: target_y--; break;  
                             case SDLK_LEFT: target_x++; break;  
@@ -300,7 +299,7 @@ int main(int argc, char *argv[]) {
                             }
                         }
                      } else {
-                         if (e.key.keysym.sym == SDLK_r || e.key.keysym.sym == SDLK_RETURN) {
+                         if (e.key.key == SDLK_r || e.key.key == SDLK_RETURN) {
                              shuffle_game(&game);
                              has_won = false;
                          }
@@ -313,31 +312,32 @@ int main(int argc, char *argv[]) {
         SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
         SDL_RenderClear(renderer);
 
-        // Update Window Size Reference
         int w, h;
         SDL_GetWindowSize(window, &w, &h);
 
         if (state == STATE_MENU) {
-            // Draw Menu
             SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-            draw_number(renderer, 3, w/6, h/2, 100);
-            draw_number(renderer, 4, w/2, h/2, 100);
-             draw_number(renderer, 5, 5*w/6, h/2, 100);
+            draw_number(renderer, 3, w/6.0f, h/2.0f, 100.0f);
+            draw_number(renderer, 4, w/2.0f, h/2.0f, 100.0f);
+             draw_number(renderer, 5, 5*w/6.0f, h/2.0f, 100.0f);
         }
         else if (state == STATE_PLAYING) {
             if (has_won) {
                 SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255); 
-                // Draw a full rect over the game area (not UI)
-                SDL_Rect gameRect = {0, 0, w, game.size * TILE_SIZE};
+                SDL_FRect gameRect = {0.0f, 0.0f, (float)w, (float)(game.size * TILE_SIZE)};
                 SDL_RenderFillRect(renderer, &gameRect);
             }
             
-            // Draw Tiles
             for (int y = 0; y < game.size; y++) {
                 for (int x = 0; x < game.size; x++) {
                     int val = game.grid[y][x];
                     if (val != 0) {
-                        SDL_Rect rect = {x * TILE_SIZE + GAP, y * TILE_SIZE + GAP, TILE_SIZE - 2 * GAP, TILE_SIZE - 2 * GAP};
+                        SDL_FRect rect = {
+                            (float)(x * TILE_SIZE + GAP), 
+                            (float)(y * TILE_SIZE + GAP), 
+                            (float)(TILE_SIZE - 2 * GAP), 
+                            (float)(TILE_SIZE - 2 * GAP)
+                        };
                         
                         if (val % 2 == 0)
                             SDL_SetRenderDrawColor(renderer, 100, 100, 200, 255);
@@ -348,21 +348,19 @@ int main(int argc, char *argv[]) {
                         
                         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
                         draw_number(renderer, val, 
-                            rect.x + rect.w / 2, 
-                            rect.y + rect.h / 2, 
-                            TILE_SIZE / 3);
+                            rect.x + rect.w / 2.0f, 
+                            rect.y + rect.h / 2.0f, 
+                            TILE_SIZE / 3.0f);
                     }
                 }
             }
             
-            // Draw UI Bar
-            SDL_Rect uiRect = {0, game.size * TILE_SIZE, w, UI_HEIGHT};
+            SDL_FRect uiRect = {0.0f, (float)(game.size * TILE_SIZE), (float)w, (float)UI_HEIGHT};
             SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
             SDL_RenderFillRect(renderer, &uiRect);
             
-            // Draw "Back / Home" Icon centered in UI bar
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            draw_home_icon(renderer, w/2 - 20, game.size * TILE_SIZE + 10, 40, 40);
+            draw_home_icon(renderer, w/2.0f - 20.0f, game.size * TILE_SIZE + 10.0f, 40.0f, 40.0f);
         }
 
         SDL_RenderPresent(renderer);

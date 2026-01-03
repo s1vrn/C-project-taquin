@@ -47,8 +47,9 @@ Assurez-vous d'avoir un environnement de développement C (comme MinGW) et les b
 - **Coordonnées Flottantes** : SDL3 utilise des `float` pour le rendu (`SDL_FRect` au lieu de `SDL_Rect`). Toutes les fonctions de dessin (`draw_number`, `draw_home_icon`, rendu des tuiles) ont été adaptées pour utiliser des floats, offrant une précision sub-pixel potentielle.
 - **Initialisation Fenêtre** : `SDL_CreateWindow` ne prend plus de coordonnées X/Y explicites par défaut.
 - **Gestion des Événements** : Utilisation des constantes `SDL_EVENT_QUIT`, `SDL_EVENT_KEY_DOWN`, etc.
+- **Pop-up Victoire** : Utilisation de `SDL_ShowMessageBox` pour afficher une boîte de dialogue native OS lors de la victoire.
 
 ### Menu & Navigation
 - **Menu Principal** : Choix modulable de la taille (3, 4, 5).
 - **Interface Jeu** : Grille + Barre de navigation (Maison).
-- **Logique** : Machine à états (`STATE_MENU`, `STATE_PLAYING`) conservée et adaptée.
+- **Victoire** : Une fenêtre s'ouvre proposant "Replay", "Change Size" (Retour Menu) ou "Quit".

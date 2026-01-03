@@ -176,6 +176,34 @@ void draw_home_icon(SDL_Renderer *renderer, float x, float y, float w, float h) 
     }
 }
 
+// Helper to show win dialog and return choice: 0=Replay, 1=Menu, 2=Quit
+int show_win_dialog(SDL_Window *window) {
+    const SDL_MessageBoxButtonData buttons[] = {
+        { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 0, "Replay" },
+        { 0, 1, "Change Size" },
+        { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 2, "Quit" },
+    };
+    
+    // SDL3 MessageBoxData structure might differ slightly or be same
+    // Checking basics: headers are good.
+    const SDL_MessageBoxData messageboxdata = {
+        SDL_MESSAGEBOX_INFORMATION,
+        window,
+        "Victory!",
+        "You finished the puzzle! What would you like to do?",
+        3,
+        buttons,
+        NULL
+    };
+    
+    int buttonid;
+    if (!SDL_ShowMessageBox(&messageboxdata, &buttonid)) {
+        printf("Error displaying message box: %s\n", SDL_GetError());
+        return -1;
+    }
+    return buttonid;
+}
+
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
@@ -263,13 +291,15 @@ int main(int argc, char *argv[]) {
                         move_tile(&game, x, y);
                         if (check_win(&game)) {
                             has_won = true;
-                            printf("You Won!\n");
+                            // Win handling moved to render loop to draw last frame first or right here?
+                            // Let's set a flag to show dialog AFTER drawing the move
                         }
                     } else {
                          if (e.button.button == SDL_BUTTON_RIGHT) {
                              state = STATE_MENU;
                              SDL_SetWindowSize(window, 4 * TILE_SIZE, 4 * TILE_SIZE + UI_HEIGHT);
                         } else {
+                            // Manual replay click
                             shuffle_game(&game);
                             has_won = false;
                         }
@@ -288,18 +318,17 @@ int main(int argc, char *argv[]) {
                             case SDLK_DOWN: target_y--; break;  
                             case SDLK_LEFT: target_x++; break;  
                             case SDLK_RIGHT: target_x--; break; 
-                            case SDLK_r: shuffle_game(&game); break;
+                            case SDLK_R: shuffle_game(&game); break;
                         }
                         
                         if (target_x >= 0 && target_x < game.size && target_y >= 0 && target_y < game.size) {
                             move_tile(&game, target_x, target_y);
                              if (check_win(&game)) {
                                 has_won = true;
-                                printf("You Won!\n");
                             }
                         }
                      } else {
-                         if (e.key.key == SDLK_r || e.key.key == SDLK_RETURN) {
+                         if (e.key.key == SDLK_R || e.key.key == SDLK_RETURN) {
                              shuffle_game(&game);
                              has_won = false;
                          }
@@ -322,11 +351,6 @@ int main(int argc, char *argv[]) {
              draw_number(renderer, 5, 5*w/6.0f, h/2.0f, 100.0f);
         }
         else if (state == STATE_PLAYING) {
-            if (has_won) {
-                SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255); 
-                SDL_FRect gameRect = {0.0f, 0.0f, (float)w, (float)(game.size * TILE_SIZE)};
-                SDL_RenderFillRect(renderer, &gameRect);
-            }
             
             for (int y = 0; y < game.size; y++) {
                 for (int x = 0; x < game.size; x++) {
@@ -339,7 +363,10 @@ int main(int argc, char *argv[]) {
                             (float)(TILE_SIZE - 2 * GAP)
                         };
                         
-                        if (val % 2 == 0)
+                        // If won, make them all green
+                        if (has_won)
+                            SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255);
+                        else if (val % 2 == 0)
                             SDL_SetRenderDrawColor(renderer, 100, 100, 200, 255);
                         else 
                             SDL_SetRenderDrawColor(renderer, 200, 100, 100, 255);
@@ -361,6 +388,24 @@ int main(int argc, char *argv[]) {
             
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
             draw_home_icon(renderer, w/2.0f - 20.0f, game.size * TILE_SIZE + 10.0f, 40.0f, 40.0f);
+            
+            // Handle win dialog AFTER rendering the frame so player sees the green state
+            if (has_won) {
+                 SDL_RenderPresent(renderer); // Show the green frame first
+                 
+                 int choice = show_win_dialog(window);
+                 if (choice == 0) { // Replay
+                     init_game(&game, game.size); // Reset fully or just shuffle? init resets pos.
+                     shuffle_game(&game);
+                     has_won = false;
+                 } else if (choice == 1) { // Menu
+                     state = STATE_MENU;
+                     SDL_SetWindowSize(window, 4 * TILE_SIZE, 4 * TILE_SIZE + UI_HEIGHT);
+                 } else if (choice == 2) { // Quit
+                     running = false;
+                 }
+                 continue; // Skip the standard Present below to avoid flickering or just continue
+            }
         }
 
         SDL_RenderPresent(renderer);
